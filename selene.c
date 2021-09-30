@@ -1,13 +1,13 @@
 #include <yed/plugin.h>
 
 /* COMMANDS */
-void vimish_take_key(int n_args, char **args);
-void vimish_bind(int n_args, char **args);
-void vimish_unbind(int n_args, char **args);
-void vimish_exit_insert(int n_args, char **args);
-void vimish_write(int n_args, char **args);
-void vimish_quit(int n_args, char **args);
-void vimish_write_quit(int n_args, char **args);
+void selene_take_key(int n_args, char **args);
+void selene_bind(int n_args, char **args);
+void selene_unbind(int n_args, char **args);
+void selene_exit_insert(int n_args, char **args);
+void selene_write(int n_args, char **args);
+void selene_quit(int n_args, char **args);
+void selene_write_quit(int n_args, char **args);
 /* END COMMANDS */
 
 #define MODE_NORMAL  (0x0)
@@ -32,7 +32,7 @@ static char *mode_strs_lowercase[] = {
     "yank"
 };
 
-static int vimish_mode_completion(char *string, yed_completion_results *results) {
+static int selene_mode_completion(char *string, yed_completion_results *results) {
     int status;
 
     FN_BODY_FOR_COMPLETE_FROM_ARRAY(string, 4, mode_strs_lowercase, results, status);
@@ -47,7 +47,7 @@ typedef struct {
     int    key;
     int    n_args;
     char **args;
-} vimish_key_binding;
+} selene_key_binding;
 
 static yed_plugin *Self;
 static int mode;
@@ -59,21 +59,21 @@ static int last_till_key;
 static char last_till_op;
 static int num_undo_records_before_insert;
 
-void vimish_unload(yed_plugin *self);
-void vimish_normal(int key, char* key_str);
-void vimish_insert(int key, char* key_str);
-void vimish_delete(int key, char* key_str);
-void vimish_yank(int key, char* key_str);
+void selene_unload(yed_plugin *self);
+void selene_normal(int key, char* key_str);
+void selene_insert(int key, char* key_str);
+void selene_delete(int key, char* key_str);
+void selene_yank(int key, char* key_str);
 void bind_keys(void);
-void vimish_change_mode(int new_mode, int by_line, int cancel);
+void selene_change_mode(int new_mode, int by_line, int cancel);
 void enter_insert(void);
 void exit_insert(void);
 void enter_delete(int by_line);
 void exit_delete(int cancel);
 void enter_yank(int by_line);
 void exit_yank(int cancel);
-void vimish_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args);
-void vimish_remove_binding(int b_mode, int n_keys, int *keys);
+void selene_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args);
+void selene_remove_binding(int b_mode, int n_keys, int *keys);
 
 int yed_plugin_boot(yed_plugin *self) {
     int i;
@@ -83,41 +83,41 @@ int yed_plugin_boot(yed_plugin *self) {
     Self = self;
 
     for (i = 0; i < N_MODES; i += 1) {
-        mode_bindings[i] = array_make(vimish_key_binding);
+        mode_bindings[i] = array_make(selene_key_binding);
     }
 
     repeat_keys = array_make(int);
 
-    yed_plugin_set_unload_fn(Self, vimish_unload);
+    yed_plugin_set_unload_fn(Self, selene_unload);
 
-    yed_plugin_set_command(Self, "vimish-take-key",    vimish_take_key);
-    yed_plugin_set_command(Self, "vimish-bind",        vimish_bind);
-    yed_plugin_set_command(Self, "vimish-unbind",      vimish_unbind);
-    yed_plugin_set_command(Self, "vimish-exit-insert", vimish_exit_insert);
-    yed_plugin_set_command(Self, "w",                  vimish_write);
-    yed_plugin_set_command(Self, "W",                  vimish_write);
-    yed_plugin_set_command(Self, "q",                  vimish_quit);
-    yed_plugin_set_command(Self, "Q",                  vimish_quit);
-    yed_plugin_set_command(Self, "wq",                 vimish_write_quit);
-    yed_plugin_set_command(Self, "Wq",                 vimish_write_quit);
+    yed_plugin_set_command(Self, "selene-take-key",    selene_take_key);
+    yed_plugin_set_command(Self, "selene-bind",        selene_bind);
+    yed_plugin_set_command(Self, "selene-unbind",      selene_unbind);
+    yed_plugin_set_command(Self, "selene-exit-insert", selene_exit_insert);
+    yed_plugin_set_command(Self, "w",                  selene_write);
+    yed_plugin_set_command(Self, "W",                  selene_write);
+    yed_plugin_set_command(Self, "q",                  selene_quit);
+    yed_plugin_set_command(Self, "Q",                  selene_quit);
+    yed_plugin_set_command(Self, "wq",                 selene_write_quit);
+    yed_plugin_set_command(Self, "Wq",                 selene_write_quit);
 
-    yed_plugin_set_completion(Self, "vimish-mode", vimish_mode_completion);
-    yed_plugin_set_completion(Self, "vimish-bind-compl-arg-0", vimish_mode_completion);
-    yed_plugin_set_completion(Self, "vimish-bind-compl-arg-2", yed_get_completion("command"));
-    yed_plugin_set_completion(Self, "vimish-unbind-compl-arg-0", vimish_mode_completion);
+    yed_plugin_set_completion(Self, "selene-mode", selene_mode_completion);
+    yed_plugin_set_completion(Self, "selene-bind-compl-arg-0", selene_mode_completion);
+    yed_plugin_set_completion(Self, "selene-bind-compl-arg-2", yed_get_completion("command"));
+    yed_plugin_set_completion(Self, "selene-unbind-compl-arg-0", selene_mode_completion);
 
     bind_keys();
 
-    vimish_change_mode(MODE_NORMAL, 0, 0);
-    yed_set_var("vimish-mode", mode_strs[mode]);
-    YEXE("set", "status-line-var", "vimish-mode");
+    selene_change_mode(MODE_NORMAL, 0, 0);
+    yed_set_var("selene-mode", mode_strs[mode]);
+    YEXE("set", "status-line-var", "selene-mode");
 
     return 0;
 }
 
-void vimish_unload(yed_plugin *self) {
+void selene_unload(yed_plugin *self) {
     int                 i, j;
-    vimish_key_binding *b;
+    selene_key_binding *b;
 
     for (i = 0; i < N_MODES; i += 1) {
         array_traverse(mode_bindings[i], b) {
@@ -168,7 +168,7 @@ void bind_keys(void) {
 
     for (key = 1; key < REAL_KEY_MAX; key += 1) {
         sprintf(key_str, "%d", key);
-        YPBIND(Self, key, "vimish-take-key", key_str);
+        YPBIND(Self, key, "selene-take-key", key_str);
     }
 
     if (ctrl_h_is_bs) {
@@ -177,9 +177,9 @@ void bind_keys(void) {
     }
 }
 
-void vimish_change_mode(int new_mode, int by_line, int cancel) {
+void selene_change_mode(int new_mode, int by_line, int cancel) {
     char                key_str[32];
-    vimish_key_binding *b;
+    selene_key_binding *b;
 
     array_traverse(mode_bindings[mode], b) {
         yed_unbind_key(b->key);
@@ -187,7 +187,7 @@ void vimish_change_mode(int new_mode, int by_line, int cancel) {
             yed_delete_key_sequence(b->key);
         } else if (b->key < REAL_KEY_MAX) {
             sprintf(key_str, "%d", b->key);
-            YPBIND(Self, b->key, "vimish-take-key", key_str);
+            YPBIND(Self, b->key, "selene-take-key", key_str);
         }
     }
 
@@ -220,10 +220,10 @@ void vimish_change_mode(int new_mode, int by_line, int cancel) {
         case MODE_YANK:   enter_yank(by_line);   break;
     }
 
-    yed_set_var("vimish-mode", mode_strs[new_mode]);
+    yed_set_var("selene-mode", mode_strs[new_mode]);
 }
 
-static void _vimish_take_key(int key, char *maybe_key_str) {
+static void _selene_take_key(int key, char *maybe_key_str) {
     char *key_str, buff[32];
 
     if (maybe_key_str) {
@@ -234,10 +234,10 @@ static void _vimish_take_key(int key, char *maybe_key_str) {
     }
 
     switch (mode) {
-        case MODE_NORMAL: vimish_normal(key, key_str); break;
-        case MODE_INSERT: vimish_insert(key, key_str); break;
-        case MODE_DELETE: vimish_delete(key, key_str); break;
-        case MODE_YANK:   vimish_yank(key, key_str);   break;
+        case MODE_NORMAL: selene_normal(key, key_str); break;
+        case MODE_INSERT: selene_insert(key, key_str); break;
+        case MODE_DELETE: selene_delete(key, key_str); break;
+        case MODE_YANK:   selene_yank(key, key_str);   break;
         default:
             LOG_FN_ENTER();
             yed_log("[!] invalid mode (?)");
@@ -245,7 +245,7 @@ static void _vimish_take_key(int key, char *maybe_key_str) {
     }
 }
 
-void vimish_take_key(int n_args, char **args) {
+void selene_take_key(int n_args, char **args) {
     int key;
 
     if (n_args != 1) {
@@ -255,10 +255,10 @@ void vimish_take_key(int n_args, char **args) {
 
     sscanf(args[0], "%d", &key);
 
-    _vimish_take_key(key, args[0]);
+    _selene_take_key(key, args[0]);
 }
 
-void vimish_bind(int n_args, char **args) {
+void selene_bind(int n_args, char **args) {
     char *mode_str, *cmd;
     int   b_mode, n_keys, keys[MAX_SEQ_LEN], n_cmd_args;
 
@@ -301,10 +301,10 @@ void vimish_bind(int n_args, char **args) {
     cmd = args[2];
 
     n_cmd_args = n_args - 3;
-    vimish_make_binding(b_mode, n_keys, keys, cmd, n_cmd_args, args + 3);
+    selene_make_binding(b_mode, n_keys, keys, cmd, n_cmd_args, args + 3);
 }
 
-void vimish_unbind(int n_args, char **args) {
+void selene_unbind(int n_args, char **args) {
     char *mode_str;
     int   b_mode, n_keys, keys[MAX_SEQ_LEN];
 
@@ -339,12 +339,12 @@ void vimish_unbind(int n_args, char **args) {
         return;
     }
 
-    vimish_remove_binding(b_mode, n_keys, keys);
+    selene_remove_binding(b_mode, n_keys, keys);
 }
 
-void vimish_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args) {
+void selene_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args) {
     int                 i;
-    vimish_key_binding  binding, *b;
+    selene_key_binding  binding, *b;
 
     if (n_keys <= 0) {
         return;
@@ -388,9 +388,9 @@ void vimish_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_arg
     }
 }
 
-void vimish_remove_binding(int b_mode, int n_keys, int *keys) {
+void selene_remove_binding(int b_mode, int n_keys, int *keys) {
     int                 i;
-    vimish_key_binding *b;
+    selene_key_binding *b;
 
     if (n_keys <= 0) {
         return;
@@ -431,7 +431,7 @@ void vimish_remove_binding(int b_mode, int n_keys, int *keys) {
     }
 }
 
-static void vimish_push_repeat_key(int key) {
+static void selene_push_repeat_key(int key) {
     if (repeating) {
         return;
     }
@@ -439,7 +439,7 @@ static void vimish_push_repeat_key(int key) {
     array_push(repeat_keys, key);
 }
 
-static void vimish_pop_repeat_key(void) {
+static void selene_pop_repeat_key(void) {
     if (repeating) {
         return;
     }
@@ -447,17 +447,17 @@ static void vimish_pop_repeat_key(void) {
     array_pop(repeat_keys);
 }
 
-static void vimish_repeat(void) {
+static void selene_repeat(void) {
     int *key_it;
 
     repeating = 1;
     array_traverse(repeat_keys, key_it) {
-        _vimish_take_key(*key_it, NULL);
+        _selene_take_key(*key_it, NULL);
     }
     repeating = 0;
 }
 
-static void vimish_start_repeat(int key) {
+static void selene_start_repeat(int key) {
     if (repeating) {
         return;
     }
@@ -466,12 +466,12 @@ static void vimish_start_repeat(int key) {
     array_push(repeat_keys, key);
 }
 
-void vimish_exit_insert(int n_args, char **args) {
-    vimish_push_repeat_key(CTRL_C);
-    vimish_change_mode(MODE_NORMAL, 0, 0);
+void selene_exit_insert(int n_args, char **args) {
+    selene_push_repeat_key(CTRL_C);
+    selene_change_mode(MODE_NORMAL, 0, 0);
 }
 
-static void vimish_do_till_fw(int key) {
+static void selene_do_till_fw(int key) {
     yed_frame *f;
     yed_line  *line;
     int        col;
@@ -501,7 +501,7 @@ out:
     return;
 }
 
-static void vimish_do_till_bw(int key, int stop_before) {
+static void selene_do_till_bw(int key, int stop_before) {
     yed_frame *f;
     yed_line  *line;
     int        col;
@@ -534,25 +534,25 @@ out:
     return;
 }
 
-static void vimish_repeat_till(void) {
+static void selene_repeat_till(void) {
     if (last_till_op == 'f' || last_till_op == 't') {
-        vimish_do_till_fw(last_till_key);
+        selene_do_till_fw(last_till_key);
     } else if (last_till_op == 'F' || last_till_op == 'T') {
-        vimish_do_till_bw(last_till_key, last_till_op == 'T');
+        selene_do_till_bw(last_till_key, last_till_op == 'T');
     }
 }
 
-int vimish_nav_common(int key, char *key_str) {
+int selene_nav_common(int key, char *key_str) {
     if (till_pending == 1) {
-        vimish_do_till_fw(key);
+        selene_do_till_fw(key);
         if (mode != MODE_NORMAL) {
-            vimish_push_repeat_key(key);
+            selene_push_repeat_key(key);
         }
         goto out;
     } else if (till_pending > 1) {
-        vimish_do_till_bw(key, till_pending == 3);
+        selene_do_till_bw(key, till_pending == 3);
         if (mode != MODE_NORMAL) {
-            vimish_push_repeat_key(key);
+            selene_push_repeat_key(key);
         }
         goto out;
     }
@@ -649,7 +649,7 @@ int vimish_nav_common(int key, char *key_str) {
             break;
 
         case ';':
-            vimish_repeat_till();
+            selene_repeat_till();
             break;
 
         default:
@@ -660,32 +660,32 @@ out:
     return 1;
 }
 
-void vimish_normal(int key, char *key_str) {
-    if (vimish_nav_common(key, key_str)) {
+void selene_normal(int key, char *key_str) {
+    if (selene_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'd':
             YEXE("select-off");
-            vimish_start_repeat(key);
-            vimish_change_mode(MODE_DELETE, 0, 0);
+            selene_start_repeat(key);
+            selene_change_mode(MODE_DELETE, 0, 0);
             break;
 
         case 'D':
             YEXE("select-off");
-            vimish_start_repeat(key);
-            vimish_change_mode(MODE_DELETE, 1, 0);
+            selene_start_repeat(key);
+            selene_change_mode(MODE_DELETE, 1, 0);
             break;
 
         case 'y':
             YEXE("select-off");
-            vimish_change_mode(MODE_YANK, 0, 0);
+            selene_change_mode(MODE_YANK, 0, 0);
             break;
 
         case 'Y':
             YEXE("select-off");
-            vimish_change_mode(MODE_YANK, 1, 0);
+            selene_change_mode(MODE_YANK, 1, 0);
             break;
 
         case 'v':
@@ -697,32 +697,32 @@ void vimish_normal(int key, char *key_str) {
             break;
 
         case 'p':
-            vimish_start_repeat(key);
+            selene_start_repeat(key);
             YEXE("paste-yank-buffer");
             break;
 
         case 'a':
             YEXE("select-off");
-            vimish_start_repeat(key);
+            selene_start_repeat(key);
             YEXE("cursor-right");
             goto enter_insert;
 
         case 'A':
             YEXE("select-off");
-            vimish_start_repeat(key);
+            selene_start_repeat(key);
             YEXE("cursor-line-end");
             goto enter_insert;
 
         case 'i':
             YEXE("select-off");
-            vimish_start_repeat(key);
+            selene_start_repeat(key);
 enter_insert:
-            vimish_change_mode(MODE_INSERT, 0, 0);
+            selene_change_mode(MODE_INSERT, 0, 0);
             break;
 
         case DEL_KEY:
             YEXE("select-off");
-            vimish_start_repeat(key);
+            selene_start_repeat(key);
             YEXE("delete-forward");
             break;
 
@@ -736,7 +736,7 @@ enter_insert:
 
         case '.':
             YEXE("select-off");
-            vimish_repeat();
+            selene_repeat();
             break;
 
         case ':':
@@ -757,8 +757,8 @@ enter_insert:
     }
 }
 
-void vimish_insert(int key, char *key_str) {
-    vimish_push_repeat_key(key);
+void selene_insert(int key, char *key_str) {
+    selene_push_repeat_key(key);
 
     switch (key) {
         case ARROW_LEFT:
@@ -803,61 +803,61 @@ void vimish_insert(int key, char *key_str) {
 
         case ESC:
         case CTRL_C:
-            vimish_change_mode(MODE_NORMAL, 0, 1);
+            selene_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
             if (key == ENTER || key == TAB || key == MBYTE || !iscntrl(key)) {
                 YEXE("insert", key_str);
             } else {
-                vimish_pop_repeat_key();
+                selene_pop_repeat_key();
                 yed_cerr("[INSERT] unhandled key %d", key);
             }
     }
 
 }
 
-void vimish_delete(int key, char *key_str) {
-    vimish_push_repeat_key(key);
+void selene_delete(int key, char *key_str) {
+    selene_push_repeat_key(key);
 
-    if (vimish_nav_common(key, key_str)) {
+    if (selene_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'd':
-            vimish_change_mode(MODE_NORMAL, 0, 0);
+            selene_change_mode(MODE_NORMAL, 0, 0);
             break;
 
         case 'c':
-            vimish_change_mode(MODE_NORMAL, 0, 0);
-            vimish_change_mode(MODE_INSERT, 0, 0);
+            selene_change_mode(MODE_NORMAL, 0, 0);
+            selene_change_mode(MODE_INSERT, 0, 0);
             break;
 
         case ESC:
         case CTRL_C:
-            vimish_change_mode(MODE_NORMAL, 0, 1);
+            selene_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
-            vimish_pop_repeat_key();
+            selene_pop_repeat_key();
             yed_cerr("[DELETE] unhandled key %d", key);
     }
 }
 
-void vimish_yank(int key, char *key_str) {
-    if (vimish_nav_common(key, key_str)) {
+void selene_yank(int key, char *key_str) {
+    if (selene_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'y':
-            vimish_change_mode(MODE_NORMAL, 0, 0);
+            selene_change_mode(MODE_NORMAL, 0, 0);
             break;
 
         case ESC:
         case CTRL_C:
-            vimish_change_mode(MODE_NORMAL, 0, 1);
+            selene_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
@@ -865,11 +865,11 @@ void vimish_yank(int key, char *key_str) {
     }
 }
 
-void vimish_write(int n_args, char **args) {
+void selene_write(int n_args, char **args) {
     yed_execute_command("write-buffer", n_args, args);
 }
 
-void vimish_quit(int n_args, char **args) {
+void selene_quit(int n_args, char **args) {
     yed_frame *frame;
 
     if (array_len(ys->frames) > 1) {
@@ -889,7 +889,7 @@ void vimish_quit(int n_args, char **args) {
     }
 }
 
-void vimish_write_quit(int n_args, char **args) {
+void selene_write_quit(int n_args, char **args) {
     YEXE("w");
     YEXE("q");
 }
@@ -908,7 +908,7 @@ void enter_insert(void) {
         }
     }
 
-    if (yed_get_var("vimish-insert-no-cursor-line")
+    if (yed_get_var("selene-insert-no-cursor-line")
     &&  yed_get_var("cursor-line")) {
         restore_cursor_line = 1;
         yed_set_var("cursor-line", "no");
@@ -933,7 +933,7 @@ void exit_insert(void) {
     }
 
     if (restore_cursor_line
-    &&  yed_get_var("vimish-insert-no-cursor-line")) {
+    &&  yed_get_var("selene-insert-no-cursor-line")) {
         yed_set_var("cursor-line", "yes");
         restore_cursor_line = 0;
     }
