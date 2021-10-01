@@ -201,7 +201,6 @@ void drill_change_mode(int new_mode, int by_line, int cancel) {
 
         yed_plugin_bind_key(Self, b->key, b->cmd, b->n_args, b->args);
     }
-
     switch (mode) {
         case MODE_NORMAL:                      break;
         case MODE_INSERT: exit_insert();       break;
@@ -235,7 +234,7 @@ static void _drill_take_key(int key, char *maybe_key_str) {
     }
 
     switch (mode) {
-        case MODE_NORMAL: drill_normal(key, key_str); break;
+        case MODE_NORMAL: drill_normal(key, key_str);  break;
         case MODE_INSERT: drill_insert(key, key_str); break;
         case MODE_DELETE: drill_delete(key, key_str); break;
         case MODE_YANK:   drill_yank(key, key_str);   break;
@@ -545,6 +544,8 @@ static void drill_repeat_till(void) {
 
 int drill_select_bool = 0;
 int drill_visual_mode_bool = 0;
+int drill_X_select = 0;
+
 int drill_nav_common(int key, char *key_str) {
     if (till_pending == 1) {
         drill_do_till_fw(key);
@@ -559,38 +560,38 @@ int drill_nav_common(int key, char *key_str) {
         }
         goto out;
     }
-
     switch (key) {
         case 'h':
         case ARROW_LEFT:
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-left");
             break;
 
         case 'j':
         case ARROW_DOWN:
-            YEXE("select-off");
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-down");
             break;
 
         case 'k':
         case ARROW_UP:
-            YEXE("select-off");
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-up");
             break;
 
         case 'l':
         case ARROW_RIGHT:
-            YEXE("select-off");
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-right");
             break;
 
         case PAGE_UP:
-            YEXE("select-off");
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-page-up");
             break;
 
         case PAGE_DOWN:
-            YEXE("select-off");
+            if (!drill_visual_mode_bool) YEXE("select-off");
             YEXE("cursor-page-down");
             break;
 
@@ -671,6 +672,7 @@ out:
 }
 
 void drill_normal(int key, char *key_str) {
+    append_to_output_buff("printf '\033[2 q'");
     if (drill_visual_mode_bool) {
         yed_buffer* buff = ys->active_frame->buffer;
         if (!buff->has_selection) drill_visual_mode_bool = 0;
@@ -682,6 +684,7 @@ void drill_normal(int key, char *key_str) {
     switch (key) {
         case 'd':
             YEXE("select-off");
+            drill_X_select = 0;
             drill_start_repeat(key);
             drill_change_mode(MODE_DELETE, 0, 0);
             break;
@@ -704,13 +707,13 @@ void drill_normal(int key, char *key_str) {
 
         case 'v':
             drill_visual_mode_bool = 1;
-            YEXE("select");
+            if (!drill_X_select) YEXE("select");
             break;
-
-        case 'V':
+        case 'x':
             YEXE("select-lines");
             break;
-
+        case 'X':
+            YEXE("cursor-down");
         case 'p':
             drill_start_repeat(key);
             YEXE("paste-yank-buffer");
@@ -928,6 +931,7 @@ void enter_insert(void) {
         restore_cursor_line = 1;
         yed_set_var("cursor-line", "no");
     }
+    append_to_output_buff("printf '\033[6 q'");
 }
 
 void exit_insert(void) {
@@ -961,7 +965,7 @@ void enter_delete(int by_line) {
     } else {
         YEXE("select");
     }
-
+    append_to_output_buff("printf '\033[4 q'");
 }
 
 void enter_yank(int by_line) {
@@ -971,6 +975,7 @@ void enter_yank(int by_line) {
     } else {
         YEXE("select");
     }
+    append_to_output_buff("printf '\033[1 q'");
 }
 
 void exit_delete(int cancel) {

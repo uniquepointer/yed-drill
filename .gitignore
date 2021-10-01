@@ -1,0 +1,4 @@
+.yed*
+*.so
+*.json
+.cache*
