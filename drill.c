@@ -714,6 +714,8 @@ void drill_normal(int key, char *key_str) {
             break;
         case 'X':
             YEXE("cursor-down");
+        case 's':
+            YEXE("find-in-buffer");
         case 'p':
             drill_start_repeat(key);
             YEXE("paste-yank-buffer");
