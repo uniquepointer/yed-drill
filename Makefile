@@ -1,3 +1,5 @@
+CFLAGS += $(shell yed --print-cflags)
+CFLAGS += $(shell yed --print-ldflags)
 install:
-	gcc $(yed --print-cflags) $(yed --print-ldflags) selene.c -o selene.so
-	cp ./selene.so ~/.config/mpy/plugins
+	gcc $(CFLAGS) drill.c -o drill.so
+	cp ./drill.so ~/.config/yed/mpy/plugins

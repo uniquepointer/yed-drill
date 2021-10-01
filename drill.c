@@ -1,19 +1,20 @@
 #include <yed/plugin.h>
 
 /* COMMANDS */
-void selene_take_key(int n_args, char **args);
-void selene_bind(int n_args, char **args);
-void selene_unbind(int n_args, char **args);
-void selene_exit_insert(int n_args, char **args);
-void selene_write(int n_args, char **args);
-void selene_quit(int n_args, char **args);
-void selene_write_quit(int n_args, char **args);
+void drill_take_key(int n_args, char **args);
+void drill_bind(int n_args, char **args);
+void drill_unbind(int n_args, char **args);
+void drill_exit_insert(int n_args, char **args);
+void drill_write(int n_args, char **args);
+void drill_quit(int n_args, char **args);
+void drill_write_quit(int n_args, char **args);
 /* END COMMANDS */
 
 #define MODE_NORMAL  (0x0)
 #define MODE_INSERT  (0x1)
 #define MODE_DELETE  (0x2)
 #define MODE_YANK    (0x3)
+#define MODE_VISUAL  (0x4)
 #define N_MODES      (0x5)
 
 static int restore_cursor_line;
@@ -32,7 +33,7 @@ static char *mode_strs_lowercase[] = {
     "yank"
 };
 
-static int selene_mode_completion(char *string, yed_completion_results *results) {
+static int drill_mode_completion(char *string, yed_completion_results *results) {
     int status;
 
     FN_BODY_FOR_COMPLETE_FROM_ARRAY(string, 4, mode_strs_lowercase, results, status);
@@ -47,7 +48,7 @@ typedef struct {
     int    key;
     int    n_args;
     char **args;
-} selene_key_binding;
+} drill_key_binding;
 
 static yed_plugin *Self;
 static int mode;
@@ -59,21 +60,21 @@ static int last_till_key;
 static char last_till_op;
 static int num_undo_records_before_insert;
 
-void selene_unload(yed_plugin *self);
-void selene_normal(int key, char* key_str);
-void selene_insert(int key, char* key_str);
-void selene_delete(int key, char* key_str);
-void selene_yank(int key, char* key_str);
+void drill_unload(yed_plugin *self);
+void drill_normal(int key, char* key_str);
+void drill_insert(int key, char* key_str);
+void drill_delete(int key, char* key_str);
+void drill_yank(int key, char* key_str);
 void bind_keys(void);
-void selene_change_mode(int new_mode, int by_line, int cancel);
+void drill_change_mode(int new_mode, int by_line, int cancel);
 void enter_insert(void);
 void exit_insert(void);
 void enter_delete(int by_line);
 void exit_delete(int cancel);
 void enter_yank(int by_line);
 void exit_yank(int cancel);
-void selene_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args);
-void selene_remove_binding(int b_mode, int n_keys, int *keys);
+void drill_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args);
+void drill_remove_binding(int b_mode, int n_keys, int *keys);
 
 int yed_plugin_boot(yed_plugin *self) {
     int i;
@@ -83,41 +84,41 @@ int yed_plugin_boot(yed_plugin *self) {
     Self = self;
 
     for (i = 0; i < N_MODES; i += 1) {
-        mode_bindings[i] = array_make(selene_key_binding);
+        mode_bindings[i] = array_make(drill_key_binding);
     }
 
     repeat_keys = array_make(int);
 
-    yed_plugin_set_unload_fn(Self, selene_unload);
+    yed_plugin_set_unload_fn(Self, drill_unload);
 
-    yed_plugin_set_command(Self, "selene-take-key",    selene_take_key);
-    yed_plugin_set_command(Self, "selene-bind",        selene_bind);
-    yed_plugin_set_command(Self, "selene-unbind",      selene_unbind);
-    yed_plugin_set_command(Self, "selene-exit-insert", selene_exit_insert);
-    yed_plugin_set_command(Self, "w",                  selene_write);
-    yed_plugin_set_command(Self, "W",                  selene_write);
-    yed_plugin_set_command(Self, "q",                  selene_quit);
-    yed_plugin_set_command(Self, "Q",                  selene_quit);
-    yed_plugin_set_command(Self, "wq",                 selene_write_quit);
-    yed_plugin_set_command(Self, "Wq",                 selene_write_quit);
+    yed_plugin_set_command(Self, "drill-take-key",    drill_take_key);
+    yed_plugin_set_command(Self, "drill-bind",        drill_bind);
+    yed_plugin_set_command(Self, "drill-unbind",      drill_unbind);
+    yed_plugin_set_command(Self, "drill-exit-insert", drill_exit_insert);
+    yed_plugin_set_command(Self, "w",                  drill_write);
+    yed_plugin_set_command(Self, "W",                  drill_write);
+    yed_plugin_set_command(Self, "q",                  drill_quit);
+    yed_plugin_set_command(Self, "Q",                  drill_quit);
+    yed_plugin_set_command(Self, "wq",                 drill_write_quit);
+    yed_plugin_set_command(Self, "Wq",                 drill_write_quit);
 
-    yed_plugin_set_completion(Self, "selene-mode", selene_mode_completion);
-    yed_plugin_set_completion(Self, "selene-bind-compl-arg-0", selene_mode_completion);
-    yed_plugin_set_completion(Self, "selene-bind-compl-arg-2", yed_get_completion("command"));
-    yed_plugin_set_completion(Self, "selene-unbind-compl-arg-0", selene_mode_completion);
+    yed_plugin_set_completion(Self, "drill-mode", drill_mode_completion);
+    yed_plugin_set_completion(Self, "drill-bind-compl-arg-0", drill_mode_completion);
+    yed_plugin_set_completion(Self, "drill-bind-compl-arg-2", yed_get_completion("command"));
+    yed_plugin_set_completion(Self, "drill-unbind-compl-arg-0", drill_mode_completion);
 
     bind_keys();
 
-    selene_change_mode(MODE_NORMAL, 0, 0);
-    yed_set_var("selene-mode", mode_strs[mode]);
-    YEXE("set", "status-line-var", "selene-mode");
+    drill_change_mode(MODE_NORMAL, 0, 0);
+    yed_set_var("drill-mode", mode_strs[mode]);
+    YEXE("set", "status-line-var", "drill-mode");
 
     return 0;
 }
 
-void selene_unload(yed_plugin *self) {
+void drill_unload(yed_plugin *self) {
     int                 i, j;
-    selene_key_binding *b;
+    drill_key_binding *b;
 
     for (i = 0; i < N_MODES; i += 1) {
         array_traverse(mode_bindings[i], b) {
@@ -168,7 +169,7 @@ void bind_keys(void) {
 
     for (key = 1; key < REAL_KEY_MAX; key += 1) {
         sprintf(key_str, "%d", key);
-        YPBIND(Self, key, "selene-take-key", key_str);
+        YPBIND(Self, key, "drill-take-key", key_str);
     }
 
     if (ctrl_h_is_bs) {
@@ -177,9 +178,9 @@ void bind_keys(void) {
     }
 }
 
-void selene_change_mode(int new_mode, int by_line, int cancel) {
+void drill_change_mode(int new_mode, int by_line, int cancel) {
     char                key_str[32];
-    selene_key_binding *b;
+    drill_key_binding *b;
 
     array_traverse(mode_bindings[mode], b) {
         yed_unbind_key(b->key);
@@ -187,7 +188,7 @@ void selene_change_mode(int new_mode, int by_line, int cancel) {
             yed_delete_key_sequence(b->key);
         } else if (b->key < REAL_KEY_MAX) {
             sprintf(key_str, "%d", b->key);
-            YPBIND(Self, b->key, "selene-take-key", key_str);
+            YPBIND(Self, b->key, "drill-take-key", key_str);
         }
     }
 
@@ -220,10 +221,10 @@ void selene_change_mode(int new_mode, int by_line, int cancel) {
         case MODE_YANK:   enter_yank(by_line);   break;
     }
 
-    yed_set_var("selene-mode", mode_strs[new_mode]);
+    yed_set_var("drill-mode", mode_strs[new_mode]);
 }
 
-static void _selene_take_key(int key, char *maybe_key_str) {
+static void _drill_take_key(int key, char *maybe_key_str) {
     char *key_str, buff[32];
 
     if (maybe_key_str) {
@@ -234,10 +235,10 @@ static void _selene_take_key(int key, char *maybe_key_str) {
     }
 
     switch (mode) {
-        case MODE_NORMAL: selene_normal(key, key_str); break;
-        case MODE_INSERT: selene_insert(key, key_str); break;
-        case MODE_DELETE: selene_delete(key, key_str); break;
-        case MODE_YANK:   selene_yank(key, key_str);   break;
+        case MODE_NORMAL: drill_normal(key, key_str); break;
+        case MODE_INSERT: drill_insert(key, key_str); break;
+        case MODE_DELETE: drill_delete(key, key_str); break;
+        case MODE_YANK:   drill_yank(key, key_str);   break;
         default:
             LOG_FN_ENTER();
             yed_log("[!] invalid mode (?)");
@@ -245,7 +246,7 @@ static void _selene_take_key(int key, char *maybe_key_str) {
     }
 }
 
-void selene_take_key(int n_args, char **args) {
+void drill_take_key(int n_args, char **args) {
     int key;
 
     if (n_args != 1) {
@@ -255,10 +256,10 @@ void selene_take_key(int n_args, char **args) {
 
     sscanf(args[0], "%d", &key);
 
-    _selene_take_key(key, args[0]);
+    _drill_take_key(key, args[0]);
 }
 
-void selene_bind(int n_args, char **args) {
+void drill_bind(int n_args, char **args) {
     char *mode_str, *cmd;
     int   b_mode, n_keys, keys[MAX_SEQ_LEN], n_cmd_args;
 
@@ -301,10 +302,10 @@ void selene_bind(int n_args, char **args) {
     cmd = args[2];
 
     n_cmd_args = n_args - 3;
-    selene_make_binding(b_mode, n_keys, keys, cmd, n_cmd_args, args + 3);
+    drill_make_binding(b_mode, n_keys, keys, cmd, n_cmd_args, args + 3);
 }
 
-void selene_unbind(int n_args, char **args) {
+void drill_unbind(int n_args, char **args) {
     char *mode_str;
     int   b_mode, n_keys, keys[MAX_SEQ_LEN];
 
@@ -339,12 +340,12 @@ void selene_unbind(int n_args, char **args) {
         return;
     }
 
-    selene_remove_binding(b_mode, n_keys, keys);
+    drill_remove_binding(b_mode, n_keys, keys);
 }
 
-void selene_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args) {
+void drill_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args) {
     int                 i;
-    selene_key_binding  binding, *b;
+    drill_key_binding  binding, *b;
 
     if (n_keys <= 0) {
         return;
@@ -388,9 +389,9 @@ void selene_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_arg
     }
 }
 
-void selene_remove_binding(int b_mode, int n_keys, int *keys) {
+void drill_remove_binding(int b_mode, int n_keys, int *keys) {
     int                 i;
-    selene_key_binding *b;
+    drill_key_binding *b;
 
     if (n_keys <= 0) {
         return;
@@ -431,7 +432,7 @@ void selene_remove_binding(int b_mode, int n_keys, int *keys) {
     }
 }
 
-static void selene_push_repeat_key(int key) {
+static void drill_push_repeat_key(int key) {
     if (repeating) {
         return;
     }
@@ -439,7 +440,7 @@ static void selene_push_repeat_key(int key) {
     array_push(repeat_keys, key);
 }
 
-static void selene_pop_repeat_key(void) {
+static void drill_pop_repeat_key(void) {
     if (repeating) {
         return;
     }
@@ -447,17 +448,17 @@ static void selene_pop_repeat_key(void) {
     array_pop(repeat_keys);
 }
 
-static void selene_repeat(void) {
+static void drill_repeat(void) {
     int *key_it;
 
     repeating = 1;
     array_traverse(repeat_keys, key_it) {
-        _selene_take_key(*key_it, NULL);
+        _drill_take_key(*key_it, NULL);
     }
     repeating = 0;
 }
 
-static void selene_start_repeat(int key) {
+static void drill_start_repeat(int key) {
     if (repeating) {
         return;
     }
@@ -466,12 +467,12 @@ static void selene_start_repeat(int key) {
     array_push(repeat_keys, key);
 }
 
-void selene_exit_insert(int n_args, char **args) {
-    selene_push_repeat_key(CTRL_C);
-    selene_change_mode(MODE_NORMAL, 0, 0);
+void drill_exit_insert(int n_args, char **args) {
+    drill_push_repeat_key(CTRL_C);
+    drill_change_mode(MODE_NORMAL, 0, 0);
 }
 
-static void selene_do_till_fw(int key) {
+static void drill_do_till_fw(int key) {
     yed_frame *f;
     yed_line  *line;
     int        col;
@@ -501,7 +502,7 @@ out:
     return;
 }
 
-static void selene_do_till_bw(int key, int stop_before) {
+static void drill_do_till_bw(int key, int stop_before) {
     yed_frame *f;
     yed_line  *line;
     int        col;
@@ -534,25 +535,27 @@ out:
     return;
 }
 
-static void selene_repeat_till(void) {
+static void drill_repeat_till(void) {
     if (last_till_op == 'f' || last_till_op == 't') {
-        selene_do_till_fw(last_till_key);
+        drill_do_till_fw(last_till_key);
     } else if (last_till_op == 'F' || last_till_op == 'T') {
-        selene_do_till_bw(last_till_key, last_till_op == 'T');
+        drill_do_till_bw(last_till_key, last_till_op == 'T');
     }
 }
 
-int selene_nav_common(int key, char *key_str) {
+int drill_select_bool = 0;
+int drill_visual_mode_bool = 0;
+int drill_nav_common(int key, char *key_str) {
     if (till_pending == 1) {
-        selene_do_till_fw(key);
+        drill_do_till_fw(key);
         if (mode != MODE_NORMAL) {
-            selene_push_repeat_key(key);
+            drill_push_repeat_key(key);
         }
         goto out;
     } else if (till_pending > 1) {
-        selene_do_till_bw(key, till_pending == 3);
+        drill_do_till_bw(key, till_pending == 3);
         if (mode != MODE_NORMAL) {
-            selene_push_repeat_key(key);
+            drill_push_repeat_key(key);
         }
         goto out;
     }
@@ -565,32 +568,39 @@ int selene_nav_common(int key, char *key_str) {
 
         case 'j':
         case ARROW_DOWN:
+            YEXE("select-off");
             YEXE("cursor-down");
             break;
 
         case 'k':
         case ARROW_UP:
+            YEXE("select-off");
             YEXE("cursor-up");
             break;
 
         case 'l':
         case ARROW_RIGHT:
+            YEXE("select-off");
             YEXE("cursor-right");
             break;
 
         case PAGE_UP:
+            YEXE("select-off");
             YEXE("cursor-page-up");
             break;
 
         case PAGE_DOWN:
+            YEXE("select-off");
             YEXE("cursor-page-down");
             break;
 
         case 'w':
+            if (!drill_visual_mode_bool) YEXE("select");
             YEXE("cursor-next-word");
             break;
 
-        case 'b':
+        case 'q':
+            if (!drill_visual_mode_bool) YEXE("select");
             YEXE("cursor-prev-word");
             break;
 
@@ -649,7 +659,7 @@ int selene_nav_common(int key, char *key_str) {
             break;
 
         case ';':
-            selene_repeat_till();
+            drill_repeat_till();
             break;
 
         default:
@@ -660,35 +670,40 @@ out:
     return 1;
 }
 
-void selene_normal(int key, char *key_str) {
-    if (selene_nav_common(key, key_str)) {
+void drill_normal(int key, char *key_str) {
+    if (drill_visual_mode_bool) {
+        yed_buffer* buff = ys->active_frame->buffer;
+        if (!buff->has_selection) drill_visual_mode_bool = 0;
+    }
+    if (drill_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'd':
             YEXE("select-off");
-            selene_start_repeat(key);
-            selene_change_mode(MODE_DELETE, 0, 0);
+            drill_start_repeat(key);
+            drill_change_mode(MODE_DELETE, 0, 0);
             break;
 
         case 'D':
             YEXE("select-off");
-            selene_start_repeat(key);
-            selene_change_mode(MODE_DELETE, 1, 0);
+            drill_start_repeat(key);
+            drill_change_mode(MODE_DELETE, 1, 0);
             break;
 
         case 'y':
             YEXE("select-off");
-            selene_change_mode(MODE_YANK, 0, 0);
+            drill_change_mode(MODE_YANK, 0, 0);
             break;
 
         case 'Y':
             YEXE("select-off");
-            selene_change_mode(MODE_YANK, 1, 0);
+            drill_change_mode(MODE_YANK, 1, 0);
             break;
 
         case 'v':
+            drill_visual_mode_bool = 1;
             YEXE("select");
             break;
 
@@ -697,32 +712,32 @@ void selene_normal(int key, char *key_str) {
             break;
 
         case 'p':
-            selene_start_repeat(key);
+            drill_start_repeat(key);
             YEXE("paste-yank-buffer");
             break;
 
         case 'a':
             YEXE("select-off");
-            selene_start_repeat(key);
+            drill_start_repeat(key);
             YEXE("cursor-right");
             goto enter_insert;
 
         case 'A':
             YEXE("select-off");
-            selene_start_repeat(key);
+            drill_start_repeat(key);
             YEXE("cursor-line-end");
             goto enter_insert;
 
         case 'i':
             YEXE("select-off");
-            selene_start_repeat(key);
+            drill_start_repeat(key);
 enter_insert:
-            selene_change_mode(MODE_INSERT, 0, 0);
+            drill_change_mode(MODE_INSERT, 0, 0);
             break;
 
         case DEL_KEY:
             YEXE("select-off");
-            selene_start_repeat(key);
+            drill_start_repeat(key);
             YEXE("delete-forward");
             break;
 
@@ -736,7 +751,7 @@ enter_insert:
 
         case '.':
             YEXE("select-off");
-            selene_repeat();
+            drill_repeat();
             break;
 
         case ':':
@@ -757,8 +772,8 @@ enter_insert:
     }
 }
 
-void selene_insert(int key, char *key_str) {
-    selene_push_repeat_key(key);
+void drill_insert(int key, char *key_str) {
+    drill_push_repeat_key(key);
 
     switch (key) {
         case ARROW_LEFT:
@@ -803,61 +818,61 @@ void selene_insert(int key, char *key_str) {
 
         case ESC:
         case CTRL_C:
-            selene_change_mode(MODE_NORMAL, 0, 1);
+            drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
             if (key == ENTER || key == TAB || key == MBYTE || !iscntrl(key)) {
                 YEXE("insert", key_str);
             } else {
-                selene_pop_repeat_key();
+                drill_pop_repeat_key();
                 yed_cerr("[INSERT] unhandled key %d", key);
             }
     }
 
 }
 
-void selene_delete(int key, char *key_str) {
-    selene_push_repeat_key(key);
+void drill_delete(int key, char *key_str) {
+    drill_push_repeat_key(key);
 
-    if (selene_nav_common(key, key_str)) {
+    if (drill_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'd':
-            selene_change_mode(MODE_NORMAL, 0, 0);
+            drill_change_mode(MODE_NORMAL, 0, 0);
             break;
 
         case 'c':
-            selene_change_mode(MODE_NORMAL, 0, 0);
-            selene_change_mode(MODE_INSERT, 0, 0);
+            drill_change_mode(MODE_NORMAL, 0, 0);
+            drill_change_mode(MODE_INSERT, 0, 0);
             break;
 
         case ESC:
         case CTRL_C:
-            selene_change_mode(MODE_NORMAL, 0, 1);
+            drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
-            selene_pop_repeat_key();
+            drill_pop_repeat_key();
             yed_cerr("[DELETE] unhandled key %d", key);
     }
 }
 
-void selene_yank(int key, char *key_str) {
-    if (selene_nav_common(key, key_str)) {
+void drill_yank(int key, char *key_str) {
+    if (drill_nav_common(key, key_str)) {
         return;
     }
 
     switch (key) {
         case 'y':
-            selene_change_mode(MODE_NORMAL, 0, 0);
+            drill_change_mode(MODE_NORMAL, 0, 0);
             break;
 
         case ESC:
         case CTRL_C:
-            selene_change_mode(MODE_NORMAL, 0, 1);
+            drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
         default:
@@ -865,11 +880,11 @@ void selene_yank(int key, char *key_str) {
     }
 }
 
-void selene_write(int n_args, char **args) {
+void drill_write(int n_args, char **args) {
     yed_execute_command("write-buffer", n_args, args);
 }
 
-void selene_quit(int n_args, char **args) {
+void drill_quit(int n_args, char **args) {
     yed_frame *frame;
 
     if (array_len(ys->frames) > 1) {
@@ -889,7 +904,7 @@ void selene_quit(int n_args, char **args) {
     }
 }
 
-void selene_write_quit(int n_args, char **args) {
+void drill_write_quit(int n_args, char **args) {
     YEXE("w");
     YEXE("q");
 }
@@ -908,7 +923,7 @@ void enter_insert(void) {
         }
     }
 
-    if (yed_get_var("selene-insert-no-cursor-line")
+    if (yed_get_var("drill-insert-no-cursor-line")
     &&  yed_get_var("cursor-line")) {
         restore_cursor_line = 1;
         yed_set_var("cursor-line", "no");
@@ -933,7 +948,7 @@ void exit_insert(void) {
     }
 
     if (restore_cursor_line
-    &&  yed_get_var("selene-insert-no-cursor-line")) {
+    &&  yed_get_var("drill-insert-no-cursor-line")) {
         yed_set_var("cursor-line", "yes");
         restore_cursor_line = 0;
     }
