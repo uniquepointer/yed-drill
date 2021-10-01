@@ -23,14 +23,16 @@ static char *mode_strs[] = {
     "NORMAL",
     "INSERT",
     "DELETE",
-    "YANK"
+    "YANK",
+    "VISUAL"
 };
 
 static char *mode_strs_lowercase[] = {
     "normal",
     "insert",
     "delete",
-    "yank"
+    "yank",
+    "visual"
 };
 
 static int drill_mode_completion(char *string, yed_completion_results *results) {
@@ -672,7 +674,6 @@ out:
 }
 
 void drill_normal(int key, char *key_str) {
-    append_to_output_buff("printf '\033[2 q'");
     if (drill_visual_mode_bool) {
         yed_buffer* buff = ys->active_frame->buffer;
         if (!buff->has_selection) drill_visual_mode_bool = 0;
@@ -933,7 +934,6 @@ void enter_insert(void) {
         restore_cursor_line = 1;
         yed_set_var("cursor-line", "no");
     }
-    append_to_output_buff("printf '\033[6 q'");
 }
 
 void exit_insert(void) {
@@ -967,7 +967,6 @@ void enter_delete(int by_line) {
     } else {
         YEXE("select");
     }
-    append_to_output_buff("printf '\033[4 q'");
 }
 
 void enter_yank(int by_line) {
@@ -977,7 +976,6 @@ void enter_yank(int by_line) {
     } else {
         YEXE("select");
     }
-    append_to_output_buff("printf '\033[1 q'");
 }
 
 void exit_delete(int cancel) {
