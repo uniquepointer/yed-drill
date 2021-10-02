@@ -670,6 +670,7 @@ void drill_normal(int key, char *key_str) {
 
     switch (key) {
         case 'd':
+            YEXE("yank-selection", "1");
             YEXE("delete-forward");
             drill_X_select = 0;
             break;
@@ -721,7 +722,7 @@ void drill_normal(int key, char *key_str) {
             YEXE("select-off");
             YEXE("cursor-line-end");
             YEXE("insert", "13");
-            drill_enter_insert();
+            goto enter_insert;
             break;
         case 'i':
             YEXE("select-off");
