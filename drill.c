@@ -78,6 +78,8 @@ void exit_yank(int cancel);
 void drill_make_binding(int b_mode, int n_keys, int *keys, char *cmd, int n_args, char **args);
 void drill_remove_binding(int b_mode, int n_keys, int *keys);
 
+//up for change
+void drill_enter_insert();
 int yed_plugin_boot(yed_plugin *self) {
     int i;
 
@@ -97,6 +99,7 @@ int yed_plugin_boot(yed_plugin *self) {
     yed_plugin_set_command(Self, "drill-bind",        drill_bind);
     yed_plugin_set_command(Self, "drill-unbind",      drill_unbind);
     yed_plugin_set_command(Self, "drill-exit-insert", drill_exit_insert);
+    yed_plugin_set_command(Self, "drill-enter-insert", drill_enter_insert);
     yed_plugin_set_command(Self, "w",                  drill_write);
     yed_plugin_set_command(Self, "W",                  drill_write);
     yed_plugin_set_command(Self, "q",                  drill_quit);
@@ -598,12 +601,15 @@ int drill_nav_common(int key, char *key_str) {
             break;
 
         case 'w':
-            if (!drill_visual_mode_bool) YEXE("select");
+            if (!drill_visual_mode_bool){
+            YEXE("select-off");
+            YEXE("select");
+            }
             YEXE("cursor-next-word");
+            drill_X_select = 1;
             break;
 
         case 'q':
-            if (!drill_visual_mode_bool) YEXE("select");
             YEXE("cursor-prev-word");
             break;
 
@@ -683,9 +689,9 @@ void drill_normal(int key, char *key_str) {
     }
 
     switch (key) {
+        //TODO: make delete just delete
         case 'd':
             YEXE("select-off");
-            drill_X_select = 0;
             drill_start_repeat(key);
             drill_change_mode(MODE_DELETE, 0, 0);
             break;
@@ -707,8 +713,14 @@ void drill_normal(int key, char *key_str) {
             break;
 
         case 'v':
+            if (drill_visual_mode_bool) {
+                YEXE("select-off");
+            }
+            if (!drill_X_select && drill_visual_mode_bool) {
+                YEXE("select");
+            }
             drill_visual_mode_bool = 1;
-            if (!drill_X_select) YEXE("select");
+            drill_X_select = 0;
             break;
         case 'x':
             YEXE("select-lines");
@@ -733,7 +745,11 @@ void drill_normal(int key, char *key_str) {
             drill_start_repeat(key);
             YEXE("cursor-line-end");
             goto enter_insert;
-
+        case 'o':
+            YEXE("select-off");
+            YEXE("cursor-line-end");
+            YEXE("insert", "13");
+            goto enter_insert;
         case 'i':
             YEXE("select-off");
             drill_start_repeat(key);
@@ -751,7 +767,7 @@ enter_insert:
             YEXE("undo");
             break;
 
-        case CTRL_R:
+        case 'U':
             YEXE("redo");
             break;
 
@@ -777,7 +793,7 @@ enter_insert:
             yed_cerr("[NORMAL] unhandled key %d", key);
     }
 }
-
+int last_insert;
 void drill_insert(int key, char *key_str) {
     drill_push_repeat_key(key);
 
@@ -830,6 +846,7 @@ void drill_insert(int key, char *key_str) {
         default:
             if (key == ENTER || key == TAB || key == MBYTE || !iscntrl(key)) {
                 YEXE("insert", key_str);
+                last_insert = key;
             } else {
                 drill_pop_repeat_key();
                 yed_cerr("[INSERT] unhandled key %d", key);
@@ -1035,4 +1052,10 @@ void exit_yank(int cancel) {
     }
 
     YEXE("select-off");
+}
+
+void drill_enter_insert(void) {
+            YEXE("select-off");
+            drill_start_repeat(last_insert);
+            drill_change_mode(MODE_INSERT, 0, 0);
 }
