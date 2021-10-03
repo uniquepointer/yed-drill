@@ -596,7 +596,13 @@ int drill_nav_common(int key, char *key_str) {
             break;
 
         case 'q':
+            if (!drill_visual_mode_bool){
+            YEXE("select-off");
+            YEXE("select");
+            }
             YEXE("cursor-prev-word");
+            drill_W_select = 1;
+
             break;
 
         case '0':
