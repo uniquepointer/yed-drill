@@ -705,6 +705,7 @@ void drill_normal(int key, char *key_str) {
             break;
         case 'x':
             YEXE("select-lines");
+            drill_X_select = 1;
             break;
         case 'X':
             if (!drill_X_select && !drill_visual_mode_bool) YEXE("select-lines");
