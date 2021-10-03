@@ -683,7 +683,7 @@ void drill_normal(int key, char *key_str) {
             if (drill_visual_mode_bool) {
                 YEXE("select-off");
             }
-            if (!drill_W_select && drill_visual_mode_bool) {
+            if (!drill_W_select && !drill_visual_mode_bool) {
                 YEXE("select");
             }
             drill_visual_mode_bool = 1;
