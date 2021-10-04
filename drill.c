@@ -717,6 +717,14 @@ void drill_normal(int key, char *key_str) {
             YEXE("find-in-buffer");
             drill_X_select = 0;
             break;
+        case '%':
+            YEXE("cursor-buffer-begin");
+            YEXE("select-lines");
+            YEXE("cursor-buffer-end");
+            break;
+        case 'c':
+            YEXE("replace-current-search");
+            break;
         case 'p':
             drill_start_repeat(key);
             YEXE("paste-yank-buffer");
@@ -777,6 +785,22 @@ enter_insert:
         case CTRL_Z:
             YEXE("suspend");
             break;
+
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            {
+                char buff[32];
+                sprintf(buff, "cursor-line %d", key - '0');
+                YEXE("command-prompt", buff);
+                break;
+            }
 
         default:
             yed_cerr("[NORMAL] unhandled key %d", key);
