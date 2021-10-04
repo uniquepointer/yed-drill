@@ -16,6 +16,7 @@ void drill_write_quit(int n_args, char **args);
 #define N_MODES      (0x3)
 
 static int restore_cursor_line;
+static int cursVar;
 
 static char *mode_strs[] = {
     "NORMAL",
@@ -71,6 +72,7 @@ void drill_remove_binding(int b_mode, int n_keys, int *keys);
 void drill_enter_insert();
 int yed_plugin_boot(yed_plugin *self) {
     int i;
+    cursVar = yed_var_is_truthy("drill-cursor") ? 1 : 0;
 
     YED_PLUG_VERSION_CHECK();
 
@@ -102,7 +104,6 @@ int yed_plugin_boot(yed_plugin *self) {
     yed_plugin_set_completion(Self, "drill-unbind-compl-arg-0", drill_mode_completion);
 
     bind_keys();
-
     drill_change_mode(MODE_NORMAL, 0, 0);
     yed_set_var("drill-mode", mode_strs[mode]);
     YEXE("set", "status-line-var", "drill-mode");
@@ -828,7 +829,7 @@ void drill_insert(int key, char *key_str) {
 
         case ESC:
         case CTRL_C:
-            YEXE("cursor-style", "steady-block");
+            if (cursVar) YEXE("cursor-style", "steady-block");
             drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
