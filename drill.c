@@ -828,6 +828,7 @@ void drill_insert(int key, char *key_str) {
 
         case ESC:
         case CTRL_C:
+            YEXE("cursor-style", "steady-block");
             drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
