@@ -697,12 +697,23 @@ void drill_normal(int key, char *key_str) {
             drill_X_select = 0;
             break;
         case 'x':
-            drill_X_select ^= 1;
-            YEXE("select-lines");
+            if (drill_X_select)
+            {
+                YEXE("select-lines");
+                YEXE("cursor-down");
+                YEXE("select-lines");
+            }
+            else
+            {
+                YEXE("select-lines");
+            }
+            drill_X_select = 1;
+            YEXE("cursor-line-end");
             break;
         case 'X':
             if (!drill_X_select && !drill_visual_mode_bool) YEXE("select-lines");
             drill_X_select = 1;
+            YEXE("cursor-line-end");
             YEXE("cursor-down");
             break;
         case 's':
