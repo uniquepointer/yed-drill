@@ -2,3 +2,4 @@
 *.so
 *.json
 .cache*
+tags
