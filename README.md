@@ -8,3 +8,11 @@ A kakoune roleplayer for yed, might be very rough now, and not have your favouri
 
 * Search is also on 's' in normal mode until we get the proper select command, wonder whos responsible for that
 * I can't think of anything else.
+
+Recommended bindings:
+```bash
+bind "ctrl-o" jump-stack-pop
+drill-bind normal "g d" multi jump-stack-push ctags-jump-to-definition
+drill-bind normal "g e" 'cursor-buffer-end'
+drill-bind normal "g g" 'cursor-buffer-begin'
+```

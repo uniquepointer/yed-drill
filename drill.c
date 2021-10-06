@@ -606,7 +606,7 @@ int drill_nav_common(int key, char *key_str) {
 
             break;
 
-        case '0':
+        case '^':
         case HOME_KEY:
             YEXE("cursor-line-begin");
             break;
@@ -622,14 +622,6 @@ int drill_nav_common(int key, char *key_str) {
 
         case '}':
             YEXE("cursor-next-paragraph");
-            break;
-
-        case 'g':
-            YEXE("cursor-buffer-begin");
-            break;
-
-        case 'G':
-            YEXE("cursor-buffer-end");
             break;
 
         case '/':
