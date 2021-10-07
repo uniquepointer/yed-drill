@@ -717,13 +717,6 @@ unsigned char drill_bool = 0;
 int
 drill_nav_common(int key, char* key_str)
 {
-    int meta_stranger[2];
-    meta_stranger[0] = ESC;
-    meta_stranger[1] = 'n';
-    int META_V = yed_get_key_sequence(2, meta_stranger);
-/*     meta_stranger[1] = 'c'; */
-/*     int META_C = yed_get_key_sequence(2, meta_stranger); */
-
     if (till_pending == 1)
     {
         drill_do_till_fw(key);
@@ -948,7 +941,6 @@ drill_normal(int key, char* key_str)
             break;
 
         case 'a':
-            YEXE("select-off");
             drill_start_repeat(key);
             YEXE("cursor-right");
             goto enter_insert;
