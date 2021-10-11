@@ -920,8 +920,8 @@ drill_normal(int key, char* key_str)
                 YEXE("select-lines");
             }
             drill_bool |= XEL;
-            YEXE("cursor-line-end");
             YEXE("cursor-down");
+            YEXE("cursor-line-end");
             break;
         case 's':
             YEXE("find-in-buffer");
