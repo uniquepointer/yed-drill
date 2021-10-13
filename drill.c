@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <yed/plugin.h>
-/* TODO: remove visual mode from the list */
 
 /* COMMANDS */
 void
@@ -952,6 +951,13 @@ drill_normal(int key, char* key_str)
             goto enter_insert;
         case 'o':
             YEXE("select-off");
+            YEXE("cursor-line-end");
+            YEXE("insert", "13");
+            goto enter_insert;
+            break;
+        case 'O':
+            YEXE("select-off");
+            YEXE("cursor-up");
             YEXE("cursor-line-end");
             YEXE("insert", "13");
             goto enter_insert;
