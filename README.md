@@ -27,3 +27,12 @@ drill-bind normal "g g" 'cursor-buffer-begin'
 drill-bind normal "g l" 'cursor-line-end'
 drill-bind normal "g h" 'cursor-line-begin'
 ```
+
+Changing cursor style on each mode:
+```bash
+drill-bind normal i multi 'cursor-style steady-bar' 'drill-enter-insert'
+drill-bind normal o multi 'cursor-style steady-bar' 'select-off' 'cursor-line-end' 'insert 13' 'drill-enter-insert'
+drill-bind normal O multi 'cursor-style steady-bar' 'select-off' 'cursor-up' 'cursor-line-end' 'insert 13' 'drill-enter-insert'
+drill-bind insert esc multi 'cursor-style steady-block' 'select-off' 'drill-exit-insert'
+
+```
