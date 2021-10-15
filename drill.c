@@ -25,7 +25,6 @@ drill_write_quit(int n_args, char** args);
 
 /* Variables */
 static int   restore_cursor_line;
-static int   cursVar;
 
 static char* mode_strs[]           = {"NORMAL", "INSERT"};
 
@@ -99,7 +98,6 @@ int
 yed_plugin_boot(yed_plugin* self)
 {
     int i;
-    cursVar = yed_var_is_truthy("drill-cursor") ? 1 : 0;
 
     YED_PLUG_VERSION_CHECK();
 
@@ -1071,7 +1069,6 @@ drill_insert(int key, char* key_str)
 
         case ESC:
         case CTRL_C:
-            if (cursVar) YEXE("cursor-style", "steady-block");
             drill_change_mode(MODE_NORMAL, 0, 1);
             break;
 
