@@ -735,9 +735,6 @@ drill_nav_common(int key, char* key_str)
         case 'n':
             YEXE("find-next-in-buffer");
             break;
-        case 'N':
-            YEXE("find-prev-in-buffer");
-            break;
         case 'f':
         case 't':
             till_pending = 1;
