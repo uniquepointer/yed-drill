@@ -774,6 +774,11 @@ drill_normal(int key, char* key_str)
     switch (key)
     {
         case 'd':
+            if (!(drill_bool & WORD))
+            {
+                YEXE("select");
+                YEXE("cursor-right");
+            }
             YEXE("yank-selection", "1");
             YEXE("delete-forward");
             drill_bool &= ~(XEL);
