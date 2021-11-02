@@ -774,7 +774,7 @@ drill_normal(int key, char* key_str)
     switch (key)
     {
         case 'd':
-            if (!(drill_bool & WORD))
+            if (!(drill_bool & (WORD | XEL | VISUAL)))
             {
                 YEXE("select");
                 YEXE("cursor-right");
