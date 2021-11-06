@@ -632,6 +632,7 @@ enum select_type
     VISUAL = 2,
     WORD   = 4,
     XEL    = 8,
+    GLOB   = 16,
 };
 unsigned char drill_bool = 0;
 int
@@ -663,35 +664,35 @@ drill_nav_common(int key, char* key_str)
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-left");
             /*          turn off WORD and x selection    */
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case 'j':
         case ARROW_DOWN:
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-down");
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case 'k':
         case ARROW_UP:
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-up");
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case 'l':
         case ARROW_RIGHT:
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-right");
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case PAGE_UP:
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-page-up");
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case PAGE_DOWN:
             if (!(drill_bool & VISUAL)) YEXE("select-off");
             YEXE("cursor-page-down");
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case 'w':
             if (!(drill_bool & VISUAL))
@@ -774,18 +775,18 @@ drill_normal(int key, char* key_str)
     switch (key)
     {
         case 'd':
-            if (!(drill_bool & (WORD | XEL | VISUAL)))
+            if (!(drill_bool & (WORD | XEL | VISUAL | GLOB)))
             {
                 YEXE("select");
                 YEXE("cursor-right");
             }
             YEXE("yank-selection", "1");
             YEXE("delete-forward");
-            drill_bool &= ~(XEL);
+            drill_bool &= ~(XEL | GLOB);
             break;
         case 'y':
             YEXE("yank-selection", "1");
-            drill_bool &= ~(XEL);
+            drill_bool &= ~(XEL | GLOB);
             break;
         case 'v':
             if (drill_bool & VISUAL)
@@ -797,7 +798,7 @@ drill_normal(int key, char* key_str)
                 YEXE("select");
             }
             drill_bool |= VISUAL;
-            drill_bool &= ~(WORD | XEL);
+            drill_bool &= ~(WORD | XEL | GLOB);
             break;
         case 'x':
             if (drill_bool & XEL)
@@ -824,7 +825,7 @@ drill_normal(int key, char* key_str)
             break;
         case 's':
             YEXE("find-in-buffer");
-            drill_bool &= ~(XEL);
+            drill_bool &= ~(XEL | GLOB);
             break;
         case '%':
             YEXE("cursor-buffer-begin");
@@ -833,6 +834,7 @@ drill_normal(int key, char* key_str)
                 YEXE("select-lines");
             }
             YEXE("cursor-buffer-end");
+            drill_bool |= GLOB;
             break;
         case 'c':
             YEXE("replace-current-search");
