@@ -844,8 +844,13 @@ drill_normal(int key, char* key_str)
             YEXE("paste-yank-buffer");
             break;
         case 'a':
+            if (!(drill_bool & (VISUAL | WORD | XEL)))
+            {
+                YEXE("select");
+            }
             drill_start_repeat(key);
             YEXE("cursor-right");
+            drill_bool |= VISUAL;
             goto enter_insert;
         case 'A':
             YEXE("select-off");
